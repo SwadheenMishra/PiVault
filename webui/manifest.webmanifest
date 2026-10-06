@@ -1,0 +1,10 @@
+{
+  "name": "PiVault",
+  "short_name": "PiVault",
+  "description": "Private family cloud storage",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e8ebe4",
+  "theme_color": "#b3123f",
+  "icons": [{ "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PiVault</title>
+  <meta name="theme-color" content="#b3123f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <svg class="sprite" width="0" height="0" aria-hidden="true">
+    <symbol id="logo" viewBox="0 0 64 64">
+      <mask id="pi-cut"><rect width="64" height="64" fill="#fff"/><g fill="#000"><rect x="24" y="26" width="21" height="5.5" rx="2.7"/><rect x="28" y="30" width="5" height="15" rx="2"/><path d="M37 30h5v10.5c0 .9.6 1.5 1.5 1.5H46v3h-3.5c-3 0-5.5-2-5.5-5z"/></g></mask>
+      <g mask="url(#pi-cut)"><circle cx="35" cy="27" r="14"/><circle cx="20" cy="35" r="10"/><circle cx="47" cy="36" r="9"/><rect x="8" y="36" width="48" height="14" rx="7"/></g>
+    </symbol>
+  </svg>
+
+  <!-- ===== sign in / register ===== -->
+  <div id="auth" class="auth" hidden>
+    <section class="hero">
+      <svg class="mark" aria-hidden="true"><use href="#logo"/></svg>
+      <h1>PiVault</h1>
+      <p>The family's private cloud. Photos and files, kept at home.</p>
+    </section>
+    <section class="card">
+      <div class="tabs" role="tablist">
+        <button id="tab-login" role="tab" aria-selected="true">Sign in</button>
+        <button id="tab-register" role="tab" aria-selected="false">Create account</button>
+      </div>
+      <form id="auth-form">
+        <label>Username <input id="f-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+        <label>Password <input id="f-pass" type="password" autocomplete="current-password" required></label>
+        <label id="row-pass2" hidden>Repeat password <input id="f-pass2" type="password" autocomplete="new-password"></label>
+        <label id="row-invite" hidden>Family invite code <input id="f-invite" type="password" autocomplete="off"></label>
+        <p id="auth-error" class="error" role="alert"></p>
+        <button id="auth-submit" class="btn primary" type="submit">Sign in</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- ===== main app ===== -->
+  <div id="app" hidden>
+    <header class="topbar">
+      <div class="brand"><svg aria-hidden="true"><use href="#logo"/></svg>PiVault</div>
+      <div class="grow"></div>
+      <div class="usage" id="usage" title="Storage used">
+        <div class="bar"><div class="fill" id="usage-fill"></div></div>
+        <span id="usage-text"></span>
+      </div>
+      <span class="who" id="whoami"></span>
+      <button class="icon-btn" id="btn-logout" data-icon="logout" title="Sign out" aria-label="Sign out"></button>
+    </header>
+
+    <main class="page">
+      <nav class="crumbs" id="crumbs" aria-label="Folder path"></nav>
+      <div class="titlebar">
+        <h1 id="title">Your files</h1>
+        <div class="actions">
+          <button class="btn primary" id="btn-upload" data-icon="upload">Upload</button>
+          <button class="btn" id="btn-upfolder" data-icon="folder-up">Folder</button>
+          <button class="btn" id="btn-mkdir" data-icon="folder-plus">New folder</button>
+          <div class="seg" role="group" aria-label="View">
+            <button id="v-list" data-icon="list" title="List" aria-label="List view"></button>
+            <button id="v-grid" data-icon="grid" title="Grid" aria-label="Grid view"></button>
+          </div>
+        </div>
+      </div>
+      <div id="files" class="files list"></div>
+      <div id="empty" class="empty" hidden>
+        <strong>Nothing here yet</strong>
+        Drag files onto this page, or use Upload.
+      </div>
+    </main>
+    <input type="file" id="pick-files" multiple hidden>
+    <input type="file" id="pick-folder" webkitdirectory multiple hidden>
+  </div>
+
+  <div id="uploads" hidden>
+    <header><span id="up-title">Uploads</span><button class="icon-btn" id="up-close" data-icon="close" title="Hide" aria-label="Hide"></button></header>
+    <div id="up-list"></div>
+  </div>
+
+  <div id="viewer" hidden>
+    <div class="vbar">
+      <div class="vname" id="v-name"></div>
+      <button class="icon-btn" id="v-dl" data-icon="download" title="Download" aria-label="Download"></button>
+      <button class="icon-btn" id="v-close" data-icon="close" title="Close" aria-label="Close"></button>
+    </div>
+    <div class="stage" id="v-stage">
+      <button class="icon-btn nav prev" id="v-prev" data-icon="chev-left" aria-label="Previous"></button>
+      <button class="icon-btn nav next" id="v-next" data-icon="chev-right" aria-label="Next"></button>
+    </div>
+  </div>
+
+  <div id="dropveil" hidden><div id="veil-text">Drop to upload</div></div>
+  <div id="toasts" aria-live="polite"></div>
+
+  <dialog id="dlg">
+    <form method="dialog">
+      <h2 id="dlg-title"></h2>
+      <p id="dlg-msg"></p>
+      <input type="text" id="dlg-input" autocomplete="off" spellcheck="false">
+      <div class="btns">
+        <button class="btn primary" id="dlg-ok" value="ok">OK</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
