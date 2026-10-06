@@ -276,17 +276,5 @@ pip install playwright && playwright install chromium
 python tests/ui_test.py      # real browser; saves screenshots
 ```
 
-## Roadmap
-
-- Server-side image thumbnails (grid view currently loads the original images lazily)
-- Multi-select, move between folders, and search
-- Resumable chunked uploads for flaky mobile connections
-- Password change, optional TOTP two-factor authentication
-- Shareable links with expiry
-- More services on the same login (a local LLM, security tooling)
-
 ## License
-
-Add a `LICENSE` file of your choice (MIT is a common default for portfolio projects).
-
 PiVault is an independent hobby project. It is not affiliated with or endorsed by Raspberry Pi Ltd.
