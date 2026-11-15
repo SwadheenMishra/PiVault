@@ -1,0 +1,26 @@
+# Builds PiVault.exe and the two Linux binaries and attaches them to a GitHub Release.
+# Trigger: push a version tag, e.g.  git tag v1.0.0 && git push origin v1.0.0
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { os: windows-latest,  asset: PiVault.exe,             data: "webui;webui", name: PiVault }
+          - { os: ubuntu-latest,   asset: PiVault-linux-x86_64,    data: "webui:webui", name: PiVault-linux-x86_64 }
+          - { os: ubuntu-24.04-arm, asset: PiVault-linux-aarch64,  data: "webui:webui", name: PiVault-linux-aarch64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt pyinstaller
+      - run: pyinstaller --onefile --name "${{ matrix.name }}" --paths server --add-data "${{ matrix.data }}" server/server.py
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset }}

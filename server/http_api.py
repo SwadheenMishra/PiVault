@@ -181,7 +181,7 @@ async def api_me(request):
     user = await require_user(request)
     app = vault(request)
     used = await asyncio.to_thread(app.storage.used_bytes, user)
-    return web.json_response({"username": user, "used": used, "quota": app.storage.quota})
+    return web.json_response({"username": user, "used": used, "quota": app.storage.quota_for(user)})
 
 
 async def api_list(request):

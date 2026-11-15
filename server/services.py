@@ -8,9 +8,12 @@ from pathlib import Path
 
 from auth import UserDB
 from protocol import ServiceError
+from settings import format_size
 from storage import Storage
 
 log = logging.getLogger("pivault")
+
+DEFAULT_QUOTA_BYTES = 10 * 1024**3
 
 
 class RateLimitError(ServiceError):
@@ -44,14 +47,38 @@ class RateLimiter:
 
 
 class App:
-    def __init__(self, data_dir, quota_bytes, invite_code):
+    def __init__(self, data_dir, settings, explicit_invite="", explicit_quota=None):
         data_dir = Path(data_dir)
         data_dir.mkdir(parents=True, exist_ok=True)
+        self.settings = settings
+        self._explicit_invite = explicit_invite
+        self._explicit_quota = explicit_quota
         self.users = UserDB(data_dir / "users.db")
-        self.storage = Storage(data_dir, quota_bytes)
+        self.storage = Storage(data_dir, self.quota_for)
         self.limiter = RateLimiter()
-        self.invite_code = invite_code
         self.active = 0
+
+    @property
+    def invite_code(self):
+        """A --invite-code flag or env var wins; otherwise the live settings file."""
+        if self._explicit_invite:
+            return self._explicit_invite
+        self.settings.reload()
+        return self.settings.invite_code
+
+    def default_quota(self):
+        self.settings.reload()
+        return self._explicit_quota or self.settings.default_quota or DEFAULT_QUOTA_BYTES
+
+    def quota_for(self, username):
+        """A member's own line in [storage_per_member] wins over the default."""
+        self.settings.reload()
+        return self.settings.overrides.get(username.lower()) or self.default_quota()
+
+    def describe_quotas(self):
+        text = format_size(self.default_quota())
+        extra = ", ".join(f"{u} {format_size(b)}" for u, b in sorted(self.settings.overrides.items()))
+        return f"{text}  ({extra})" if extra else text
 
 
 def need_str(args, key, maxlen=1024, required=True):

@@ -20,11 +20,14 @@ class Storage:
         base = Path(data_dir).resolve()
         self.root = base / "Storage"
         self.tmp = base / "tmp"
-        self.quota = quota_bytes
+        self._quota = quota_bytes  # bytes, or a function username -> bytes
         self.root.mkdir(parents=True, exist_ok=True)
         if self.tmp.exists():
             shutil.rmtree(self.tmp)  # leftovers from an interrupted upload
         self.tmp.mkdir(parents=True)
+
+    def quota_for(self, username):
+        return self._quota(username) if callable(self._quota) else self._quota
 
     def user_root(self, username):
         p = self.root / username
@@ -58,7 +61,7 @@ class Storage:
             raise ServiceError("a folder with that name already exists")
         used = await asyncio.to_thread(self.used_bytes, username)
         existing = target.stat().st_size if target.is_file() else 0
-        if used - existing + size > self.quota:
+        if used - existing + size > self.quota_for(username):
             raise ServiceError("storage quota exceeded")
 
         tmp = self.tmp / f"{secrets.token_hex(8)}.part"
