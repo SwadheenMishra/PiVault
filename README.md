@@ -65,13 +65,42 @@ Requires Python 3.9 or newer. The TCP server and CLI use only the standard libra
 ```bash
 pip install -r requirements.txt
 
-python server/server.py --invite-code "choose-a-family-secret"
+python server/server.py
 # web app: http://localhost:8080      TCP protocol: localhost:9000
 ```
+
+**The first time you run it, it asks two questions** and remembers the answers:
+
+1. **An invite code.** Family members need it to create an account. Type your own, or press Enter to generate one.
+2. **Who can connect?** Choose `1` for *this computer only* (the safe default, and the right choice if you'll use Tailscale or another tunnel), or `2` for *other devices on my home Wi-Fi / LAN* (plain HTTP, home networks only).
+
+The answers are saved in a plain-text settings file, `config.ini`, inside the data folder, so you are never asked again. To change them later, edit that file (see below) or run with `--setup` to be asked again. You can also skip the questions with flags (`--invite-code`, `--web-host`) or the `PIVAULT_INVITE_CODE` environment variable, which is what a background service uses, since it has no terminal to ask in.
 
 Open <http://localhost:8080>, choose **Create account**, enter your invite code, and you're in.
 
 On Windows, if `py` and `pip` disagree about which Python they use, run `py -m pip install -r requirements.txt` and start the server with the same `py`.
+
+### Settings file (`config.ini`)
+
+Open `config.ini` in any text editor to change the invite code or how much space each person gets. **No restart is needed**: the server notices the change within moments.
+
+```ini
+[pivault]
+invite_code = abcd-efgh-jk23
+web_host = 127.0.0.1          ; 0.0.0.0 = other devices on your network too
+default_storage = 10 GB       ; what everyone gets by default
+
+[storage_per_member]
+alice = 50 GB                 ; Alice gets more
+bob = 500 MB                  ; Bob gets less
+```
+
+- Sizes always need a unit: `MB`, `GB` or `TB` (for example `500 MB` or `1.5 TB`).
+- The invite code and storage limits apply live. `web_host` is read at start-up, so changing it needs a restart.
+- Names in `[storage_per_member]` are not case-sensitive. Lowering someone's limit never deletes files; they just can't upload more until they are under it.
+- If you make a typo while the server is running, it keeps the last good values and logs a warning. If the file is broken when you start, it refuses to start and tells you which line to fix.
+- Priority: command-line flag, then environment variable, then `config.ini`. `--quota-mb` overrides `default_storage`, but a member's own line always wins.
+- The file contains the invite code, so it is created owner-only (`chmod 600`) where the system supports it. An older `config.json` is migrated automatically.
 
 ### Command-line client
 
@@ -91,13 +120,57 @@ pivault[alice]> get photos                # downloads a file or a whole folder
 | `--host` | `127.0.0.1` | Address for the TCP server. Localhost only unless you change it. |
 | `--port` | `9000` | TCP protocol port |
 | `--web-port` | `8080` | Web app port (`0` disables the web app) |
-| `--web-host` | same as `--host` | Address for the web app |
-| `--data-dir` | `./data` | Where `Storage/` and `users.db` live |
-| `--invite-code` | none | Required to register (or set `PIVAULT_INVITE_CODE`) |
-| `--quota-mb` | `10240` | Per-user storage limit |
+| `--web-host` | asked on first run | Address for the web app (`127.0.0.1` = this computer only, `0.0.0.0` = your network) |
+| `--data-dir` | `./data` (next to the `.exe` when packaged) | Where `Storage/`, `users.db` and `config.ini` live |
+| `--invite-code` | asked on first run, saved in `config.ini` | Required to register (or set `PIVAULT_INVITE_CODE`) |
+| `--setup` | | Ask the first-run questions again |
+| `--quota-mb` | from `config.ini` (10 GB) | Storage per member in MB; overrides `default_storage`, but a member's own line wins |
 | `--cert`, `--key` | none | Enable TLS (PEM files) |
 
 The server warns at startup if it is exposed without TLS or without an invite code.
+
+## Downloads
+
+Ready-made files for Windows, Linux and Raspberry Pi are attached to each [release](https://github.com/SwadheenMishra/PiVault/releases). Download one, run it, and answer two questions. No Python needed.
+
+- **Windows:** double-click `PiVault.exe`. If Windows warns about an unknown publisher (the file is not code-signed), choose *More info*, then *Run anyway*.
+- **Linux and Raspberry Pi:** `chmod +x PiVault-linux-* && ./PiVault-linux-*` (use the `x86_64` file on a PC and the `aarch64` file on a 64-bit Pi).
+
+## Building a Windows executable
+
+If you'd rather hand someone a single `PiVault.exe` than ask them to install Python, you can package the server with [PyInstaller](https://pyinstaller.org). The web UI is bundled inside the file.
+
+**On a Windows machine** (PyInstaller builds for the system it runs on, so it can't make a `.exe` from Linux or macOS):
+
+```bat
+packaging\build_exe.bat
+```
+
+That runs the equivalent of:
+
+```bat
+py -m pip install -r requirements.txt pyinstaller
+py -m PyInstaller --onefile --name PiVault --icon packaging\pivault.ico --paths server --add-data "webui;webui" server\server.py
+```
+
+The result is `dist\PiVault.exe`, a single file. Copy it anywhere and double-click it. It asks the two first-run questions (invite code, who can connect) in its window, then starts. Accounts, files and your saved answers live in a `data` folder **next to the exe**. If it can't start (for example, the port is already in use), the window stays open so you can read why.
+
+Things to know:
+
+- The first launch of a one-file exe is slower, because it unpacks itself to a temporary folder.
+- Windows SmartScreen and some antivirus tools flag unsigned PyInstaller programs. This is a well-known false positive; signing the exe with a code-signing certificate avoids it.
+- Windows Firewall will ask whether to allow the program on your network when you open it up with `--web-host 0.0.0.0`.
+- On a Raspberry Pi (or any Linux machine), run the same PyInstaller command *on that machine* (use `:` instead of `;` in `--add-data "webui:webui"`) to get a native binary. For a Pi, the virtualenv and systemd setup below is usually simpler.
+
+## Building a Linux binary
+
+Same idea as the Windows build, using `packaging/build_linux.sh`. A Linux binary only runs on the same kind of CPU it was built on, so build the Raspberry Pi version on a Pi.
+
+```bash
+sh packaging/build_linux.sh      # produces dist/PiVault-linux-x86_64 or dist/PiVault-linux-aarch64
+```
+
+Releases are built automatically: pushing a tag such as `v1.0.0` runs `.github/workflows/release.yml`, which builds all three files and attaches them to a GitHub Release.
 
 ## Deploying on a Raspberry Pi
 
@@ -203,7 +276,7 @@ PiVault is built so that a mistake in one layer is caught by another. Every item
 
 ### Verification
 
-The security properties above are checked by **113 automated tests**: 30 against the TCP protocol, 62 against the HTTP API, and 21 that drive the real UI in headless Chromium, including a hostile-filename XSS attempt and a check that the browser console stays free of CSP violations.
+The security properties above are checked by **167 automated tests**: 30 against the TCP protocol, 62 against the HTTP API, 29 for the settings file, 25 for the first-run flow, and 21 that drive the real UI in headless Chromium, including a hostile-filename XSS attempt and a check that the browser console stays free of CSP violations.
 
 ### Threat model and honest limitations
 
@@ -260,10 +333,11 @@ server/
   services.py     shared logic: registration, login, rate limiting
   auth.py         users, scrypt hashing, sessions (SQLite)
   storage.py      per-user paths, quotas, atomic uploads
+  settings.py     config.ini: invite code, storage limits, live reload
   protocol.py     framing and streaming for the TCP protocol
 webui/            index.html, style.css, app.js (no build step)
 client/client.py  command-line client
-tests/            smoke_test.py, web_test.py, ui_test.py
+tests/            smoke_test.py, web_test.py, settings_test.py, setup_test.py, ui_test.py
 ```
 
 ## Tests
@@ -271,10 +345,22 @@ tests/            smoke_test.py, web_test.py, ui_test.py
 ```bash
 python tests/smoke_test.py   # TCP protocol and isolation
 python tests/web_test.py     # HTTP API, headers, sessions, CSRF, rate limiting
+python tests/settings_test.py # config.ini: sizes, per-member limits, live edits, typos
+python tests/setup_test.py   # first-run questions, driven through a real terminal (Linux/macOS)
 
 pip install playwright && playwright install chromium
 python tests/ui_test.py      # real browser; saves screenshots
 ```
 
-## License
+## Roadmap
+
+- Server-side image thumbnails (grid view currently loads the original images lazily)
+- Multi-select, move between folders, and search
+- Resumable chunked uploads for flaky mobile connections
+- Password change, optional TOTP two-factor authentication
+- Shareable links with expiry
+- More services on the same login (a local LLM, security tooling)
+
+## Disclaimer
+
 PiVault is an independent hobby project. It is not affiliated with or endorsed by Raspberry Pi Ltd.
